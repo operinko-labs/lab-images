@@ -8,6 +8,16 @@ RUN apk add --no-cache \
     mariadb-client \
     imagemagick \
     imagemagick-libs \
+    libpng \
+    libjpeg-turbo \
+    libwebp \
+    freetype \
+    icu-libs \
+    libzip \
+    oniguruma \
+    brotli-libs \
+    hiredis \
+    zstd-libs \
     tini
 
 RUN apk add --no-cache --virtual .build-deps \
