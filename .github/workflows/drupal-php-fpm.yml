@@ -1,0 +1,62 @@
+name: Build & Push drupal-php-fpm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "drupal-php-fpm/8.5-fpm-alpine/**"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.HARBOR_URL }}
+  IMAGE: ${{ secrets.HARBOR_URL }}/operinko-labs/drupal-php-fpm
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: org-runner
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Buildah/Podman
+        run: |
+          echo "BUILDAH_ISOLATION=chroot" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get -y install buildah podman uidmap libcap2 libcap2-bin
+          sudo setcap cap_setuid+eip /usr/bin/newuidmap
+          sudo setcap cap_setgid+eip /usr/bin/newgidmap
+          sudo chmod u-s /usr/bin/newuidmap
+          sudo chmod u-s /usr/bin/newgidmap
+          mkdir -p "$HOME/.docker"
+          echo -e "[storage]\ndriver = \"vfs\"" | sudo tee /etc/containers/storage.conf > /dev/null
+
+      - name: Log in to Harbor
+        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1.7
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Read tags
+        id: tags
+        run: |
+          TAGS=$(grep -v '^#' drupal-php-fpm/8.5-fpm-alpine/TAGS | grep -v '^$' | tr '\n' ' ')
+          echo "value=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build image
+        id: build
+        uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2.13
+        with:
+          image: ${{ env.IMAGE }}
+          tags: ${{ steps.tags.outputs.value }}
+          containerfiles: drupal-php-fpm/8.5-fpm-alpine/Dockerfile
+          context: drupal-php-fpm/8.5-fpm-alpine
+          layers: true
+
+      - name: Push image
+        uses: redhat-actions/push-to-registry@5ed88d269cf581ea9ef6dd6806d01562096bee9c # v2.8
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ steps.build.outputs.tags }}
