@@ -42,14 +42,19 @@ jobs:
       - name: Read tags
         id: tags
         run: |
-          TAGS=$(grep -v '^#' drupal-php-fpm/8.5-fpm-alpine/TAGS | grep -v '^$' | tr '\n' ' ')
-          echo "value=${TAGS}" >> $GITHUB_OUTPUT
+          {
+            echo 'value<<EOF'
+            grep -v '^#' drupal-php-fpm/8.5-fpm-alpine/TAGS \
+              | grep -v '^$' \
+              | tr -d '\r' \
+              | sed "s|^|${{ env.IMAGE }}:|"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Build image
         id: build
         uses: redhat-actions/buildah-build@7a95fa7ee0f02d552a32753e7414641a04307056 # v2.13
         with:
-          image: ${{ env.IMAGE }}
           tags: ${{ steps.tags.outputs.value }}
           containerfiles: drupal-php-fpm/8.5-fpm-alpine/Dockerfile
           context: drupal-php-fpm/8.5-fpm-alpine
