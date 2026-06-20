@@ -1,0 +1,65 @@
+name: Build & Push nginx-brotli
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "nginx-brotli/alpine/**"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ${{ secrets.HARBOR_URL }}
+  IMAGE: ${{ secrets.HARBOR_URL }}/operinko-labs/nginx-brotli
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: org-runner
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Buildah/Podman
+        run: |
+          echo "BUILDAH_ISOLATION=chroot" >> $GITHUB_ENV
+          sudo apt-get update
+          sudo apt-get -y install buildah podman uidmap libcap2 libcap2-bin
+          sudo setcap cap_setuid+eip /usr/bin/newuidmap
+          sudo setcap cap_setgid+eip /usr/bin/newgidmap
+          sudo chmod u-s /usr/bin/newuidmap
+          sudo chmod u-s /usr/bin/newgidmap
+          mkdir -p "$HOME/.docker"
+          echo -e "[storage]\ndriver = \"vfs\"" | sudo tee /etc/containers/storage.conf > /dev/null
+
+      - name: Log in to Harbor
+        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1.7
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build image
+        run: |
+          TAG_ARGS=()
+          while IFS= read -r tag; do
+            tag="${tag//$'\r'/}"
+            [[ -z "$tag" || "$tag" == "#"* ]] && continue
+            TAG_ARGS+=(-t "${{ env.IMAGE }}:${tag}")
+          done < nginx-brotli/alpine/TAGS
+
+          buildah bud \
+            --isolation chroot \
+            --format docker \
+            --layers \
+            -f nginx-brotli/alpine/Dockerfile \
+            "${TAG_ARGS[@]}" \
+            nginx-brotli/alpine
+
+      - name: Push image
+        run: |
+          while IFS= read -r tag; do
+            tag="${tag//$'\r'/}"
+            [[ -z "$tag" || "$tag" == "#"* ]] && continue
+            buildah push "${{ env.IMAGE }}:${tag}"
+          done < nginx-brotli/alpine/TAGS
