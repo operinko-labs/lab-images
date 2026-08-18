@@ -7,18 +7,20 @@ on:
       - "nginx-brotli/alpine/**"
   workflow_dispatch:
 
-env:
-  REGISTRY: ${{ secrets.HARBOR_URL }}
-  IMAGE: ${{ secrets.HARBOR_URL }}/operinko-labs/nginx-brotli
-
 jobs:
   build:
     name: Build & Push
-    runs-on: org-runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Resolve Harbor registry host
+        run: |
+          REGISTRY="$(echo "${{ secrets.HARBOR_URL }}" | sed -E 's#^[a-zA-Z]+://##; s#/+$##')"
+          echo "REGISTRY=${REGISTRY}" >> "$GITHUB_ENV"
+          echo "IMAGE=${REGISTRY}/operinko-labs/nginx-brotli" >> "$GITHUB_ENV"
 
       - name: Set up Buildah/Podman
         run: |
