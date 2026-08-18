@@ -22,46 +22,34 @@ jobs:
           echo "REGISTRY=${REGISTRY}" >> "$GITHUB_ENV"
           echo "IMAGE=${REGISTRY}/operinko-labs/drupal-php-fpm" >> "$GITHUB_ENV"
 
-      - name: Set up Buildah/Podman
+      - name: Build tag list
+        id: tags
         run: |
-          echo "BUILDAH_ISOLATION=chroot" >> $GITHUB_ENV
-          sudo apt-get update
-          sudo apt-get -y install buildah podman uidmap libcap2 libcap2-bin
-          sudo setcap cap_setuid+eip /usr/bin/newuidmap
-          sudo setcap cap_setgid+eip /usr/bin/newgidmap
-          sudo chmod u-s /usr/bin/newuidmap
-          sudo chmod u-s /usr/bin/newgidmap
-          mkdir -p "$HOME/.docker"
-          echo -e "[storage]\ndriver = \"vfs\"" | sudo tee /etc/containers/storage.conf > /dev/null
+          {
+            echo "tags<<EOF"
+            while IFS= read -r tag; do
+              tag="${tag//$'\r'/}"
+              [[ -z "$tag" || "$tag" == "#"* ]] && continue
+              echo "${{ env.IMAGE }}:${tag}"
+            done < drupal-php-fpm/8.5-fpm-alpine/TAGS
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Harbor
-        uses: redhat-actions/podman-login@4934294ad0449894bcd1e9f191899d7292469603 # v1.7
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
-      - name: Build image
-        run: |
-          TAG_ARGS=()
-          while IFS= read -r tag; do
-            tag="${tag//$'\r'/}"
-            [[ -z "$tag" || "$tag" == "#"* ]] && continue
-            TAG_ARGS+=(-t "${{ env.IMAGE }}:${tag}")
-          done < drupal-php-fpm/8.5-fpm-alpine/TAGS
-
-          buildah bud \
-            --isolation chroot \
-            --format docker \
-            --layers \
-            -f drupal-php-fpm/8.5-fpm-alpine/Dockerfile \
-            "${TAG_ARGS[@]}" \
-            drupal-php-fpm/8.5-fpm-alpine
-
-      - name: Push image
-        run: |
-          while IFS= read -r tag; do
-            tag="${tag//$'\r'/}"
-            [[ -z "$tag" || "$tag" == "#"* ]] && continue
-            buildah push "${{ env.IMAGE }}:${tag}"
-          done < drupal-php-fpm/8.5-fpm-alpine/TAGS
+      - name: Build and push image
+        uses: docker/build-push-action@v7
+        with:
+          context: drupal-php-fpm/8.5-fpm-alpine
+          file: drupal-php-fpm/8.5-fpm-alpine/Dockerfile
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          platforms: linux/amd64
