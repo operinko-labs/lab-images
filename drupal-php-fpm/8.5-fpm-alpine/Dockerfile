@@ -16,6 +16,7 @@ RUN apk add --no-cache \
     libzip \
     oniguruma \
     brotli-libs \
+    libavif \
     hiredis \
     zstd-libs \
     tini
@@ -30,11 +31,12 @@ RUN apk add --no-cache --virtual .build-deps \
         icu-dev \
         oniguruma-dev \
         brotli-dev \
+        libavif-dev \
         hiredis-dev \
         zstd-dev \
         imagemagick-dev \
         linux-headers \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-avif \
     && docker-php-ext-install -j$(nproc) \
         gd pdo pdo_mysql zip intl mbstring bcmath exif \
     && pecl install igbinary \
