@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "nginx-brotli/alpine/**"
+  schedule:
+    # Weekly rebuild so the image picks up nginx:alpine security updates
+    # (Mondays 03:00 UTC, ahead of gpro's Monday-morning Renovate window).
+    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 jobs:
