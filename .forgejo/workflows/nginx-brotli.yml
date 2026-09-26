@@ -54,6 +54,7 @@ jobs:
         with:
           context: nginx-brotli/alpine
           file: nginx-brotli/alpine/Dockerfile
+          pull: true
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           platforms: linux/amd64
