@@ -21,6 +21,9 @@ RUN apk add --no-cache \
     zstd-libs \
     tini
 
+# netsyslog: PHP's syslog() over UDP instead of /dev/log (see netsyslog/).
+COPY netsyslog /usr/src/netsyslog
+
 RUN apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         libpng-dev \
@@ -53,6 +56,10 @@ RUN apk add --no-cache --virtual .build-deps \
     && make && make install \
     && rm -rf /tmp/php-ext-brotli \
     && docker-php-ext-enable brotli \
+    && cd /usr/src/netsyslog && phpize && ./configure --enable-netsyslog \
+    && make && make install \
+    && docker-php-ext-enable netsyslog \
+    && cd / && rm -rf /usr/src/netsyslog \
     && apk del .build-deps \
     && rm -rf /tmp/pear /var/cache/apk/*
 
@@ -69,6 +76,14 @@ RUN sed -i \
       -e 's|;listen.group = www-data|listen.group = www-data|' \
       -e 's|;listen.mode = 0660|listen.mode = 0666|' \
       /usr/local/etc/php-fpm.d/www.conf
+
+# netsyslog is off until NETSYSLOG_HOST names a syslog receiver; unset, the
+# stock syslog() writes to /dev/log as before. NETSYSLOG_HOSTNAME is the
+# HOSTNAME field of each line (default: the container's hostname).
+RUN printf '%s\n' \
+      'netsyslog.host = ${NETSYSLOG_HOST}' \
+      'netsyslog.hostname = ${NETSYSLOG_HOSTNAME}' \
+      > /usr/local/etc/php/conf.d/zz-netsyslog.ini
 
 # Make drush (installed in vendor/bin) available globally
 ENV PATH="$PATH:/var/www/html/vendor/bin"
