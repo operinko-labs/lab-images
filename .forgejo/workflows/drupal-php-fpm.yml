@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "drupal-php-fpm/8.5-fpm-alpine/**"
+  schedule:
+    # Weekly rebuild so the image picks up php:8.5-fpm-alpine patch and
+    # security releases (Mondays 03:30 UTC, after the nginx-brotli rebuild).
+    - cron: "30 3 * * 1"
   workflow_dispatch:
 
 jobs:
@@ -50,6 +54,7 @@ jobs:
         with:
           context: drupal-php-fpm/8.5-fpm-alpine
           file: drupal-php-fpm/8.5-fpm-alpine/Dockerfile
+          pull: true
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           platforms: linux/amd64
