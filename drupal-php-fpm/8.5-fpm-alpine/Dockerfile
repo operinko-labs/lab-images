@@ -1,4 +1,4 @@
-FROM php:8.5-fpm-alpine
+FROM php:8.5.12-fpm-alpine
 
 LABEL org.opencontainers.image.source="https://github.com/operinko-labs/lab-images" \
       org.opencontainers.image.description="Drupal PHP-FPM base image"
