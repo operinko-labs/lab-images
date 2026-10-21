@@ -42,12 +42,29 @@ RUN apk add --no-cache --virtual .build-deps \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-avif \
     && docker-php-ext-install -j$(nproc) \
         gd pdo pdo_mysql zip intl mbstring bcmath exif \
-    && pecl install igbinary \
-    && pecl install redis \
-    && pecl install zstd \
-    && pecl install apcu \
-    && pecl install uploadprogress \
-    && pecl install imagick \
+    # PECL extensions from their GitHub release tags, not pecl.php.net: PECL
+    # went down under load on PHP2Shell release day (2026-10-21) and failed
+    # the build that carried the fix. zstd links the system libzstd (the
+    # GitHub archive has no bundled copy); imagick's archive leaves its
+    # version as a placeholder that the PECL packager normally fills in.
+    && for src in \
+         igbinary@https://github.com/igbinary/igbinary/archive/refs/tags/3.2.17RC1.tar.gz \
+         redis@https://github.com/phpredis/phpredis/archive/refs/tags/6.3.0.tar.gz \
+         zstd@https://github.com/kjdev/php-ext-zstd/archive/refs/tags/0.18.0.tar.gz \
+         apcu@https://github.com/krakjoe/apcu/archive/refs/tags/v5.1.28.tar.gz \
+         uploadprogress@https://github.com/php/pecl-php-uploadprogress/archive/refs/tags/uploadprogress-2.0.2.tar.gz \
+         imagick@https://github.com/Imagick/imagick/archive/refs/tags/3.8.1.tar.gz; do \
+         name=${src%%@*}; \
+         mkdir -p /tmp/ext/$name \
+         && wget -qO- "${src#*@}" | tar -xz --strip-components=1 -C /tmp/ext/$name \
+         && cd /tmp/ext/$name \
+         && if [ $name = imagick ]; then sed -i 's/@PACKAGE_VERSION@/3.8.1/' php_imagick.h; fi \
+         && phpize \
+         && if [ $name = zstd ]; then ./configure --with-libzstd; else ./configure; fi \
+         && make -j$(nproc) && make install \
+         || exit 1; \
+       done \
+    && rm -rf /tmp/ext \
     && docker-php-ext-enable igbinary redis zstd apcu uploadprogress imagick \
     && mkdir -p /tmp/php-ext-brotli \
     && wget -qO- https://github.com/kjdev/php-ext-brotli/archive/refs/tags/0.19.0.tar.gz \
