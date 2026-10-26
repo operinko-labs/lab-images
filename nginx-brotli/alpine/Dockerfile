@@ -26,7 +26,8 @@ FROM docker.io/library/nginx:alpine
 LABEL org.opencontainers.image.source="https://github.com/operinko-labs/lab-images" \
       org.opencontainers.image.description="nginx with ngx_brotli dynamic modules"
 
-RUN apk add --no-cache brotli-libs
+# nginx:alpine already ships brotli-libs, which apk add would leave as is.
+RUN apk upgrade --no-cache && apk add --no-cache brotli-libs
 
 COPY --from=builder /tmp/nginx-*/objs/ngx_http_brotli_filter_module.so \
     /usr/lib/nginx/modules/
