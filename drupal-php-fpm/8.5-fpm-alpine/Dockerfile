@@ -3,6 +3,10 @@ FROM php:8.5.12-fpm-alpine
 LABEL org.opencontainers.image.source="https://github.com/operinko-labs/lab-images" \
       org.opencontainers.image.description="Drupal PHP-FPM base image"
 
+# The pinned php tag freezes its Alpine packages; upgrade them so the weekly
+# rebuild picks up Alpine security fixes (e.g. brotli-libs 1.2.1).
+RUN apk upgrade --no-cache
+
 RUN apk add --no-cache \
     bash \
     mariadb-client \
