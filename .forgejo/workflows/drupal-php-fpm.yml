@@ -62,6 +62,32 @@ jobs:
           tags: ${{ steps.tags.outputs.first }}
           platforms: linux/amd64
 
+      # sigstore/cosign-installer needs envsubst, which the runner image lacks.
+      - name: Install cosign
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSLo "$RUNNER_TEMP/bin/cosign" https://github.com/sigstore/cosign/releases/download/v3.1.3/cosign-linux-amd64
+          echo "4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71  $RUNNER_TEMP/bin/cosign" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/bin/cosign"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      # Sign the pushed digest with the operinko-labs key (public half:
+      # cosign.pub in homeops). Legacy .sig tag, no Rekor upload: Harbor shows
+      # it as a signature.cosign accessory and nothing leaves the homelab.
+      # Retry while scan-on-push answers 412 to the manifest read.
+      - name: Sign image
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          for i in $(seq 1 30); do
+            cosign sign --yes --key env://COSIGN_PRIVATE_KEY \
+              --use-signing-config=false --new-bundle-format=false --tlog-upload=false \
+              "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}" && exit 0
+            sleep 10
+          done
+          exit 1
+
       - name: Add remaining tags
         if: steps.tags.outputs.extra != ''
         run: |
