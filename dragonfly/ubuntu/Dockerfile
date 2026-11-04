@@ -1,4 +1,4 @@
-FROM ghcr.io/dragonflydb/dragonfly:v2.0.2
+FROM ghcr.io/dragonflydb/dragonfly:v2.1.0
 
 LABEL org.opencontainers.image.source="https://github.com/operinko-labs/lab-images" \
       org.opencontainers.image.description="Dragonfly with Ubuntu security updates applied"
