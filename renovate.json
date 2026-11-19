@@ -2,5 +2,13 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "drupal-php-fpm/8.5-fpm-alpine is the 8.5 branch: take 8.5 patches only",
+      "matchFileNames": ["drupal-php-fpm/8.5-fpm-alpine/**"],
+      "matchDepNames": ["php"],
+      "allowedVersions": "/^8\\.5\\./"
+    }
   ]
 }
