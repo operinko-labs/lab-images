@@ -1,4 +1,4 @@
-FROM docker.io/library/nginx:alpine AS builder
+FROM docker.io/library/nginx:alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7 AS builder
 
 RUN apk add --no-cache \
     build-base \
@@ -21,7 +21,7 @@ RUN NGINX_VERSION=$(nginx -v 2>&1 | sed -E 's/.*nginx\/([0-9.]+).*/\1/') && \
     eval "./configure ${CONFIGURE_ARGS} --add-dynamic-module=/tmp/ngx_brotli" && \
     make -j$(nproc) modules
 
-FROM docker.io/library/nginx:alpine
+FROM docker.io/library/nginx:alpine@sha256:fb4658584bd9a916ffb6f6e365f97c25cfdb2923801f551ea08356e695f14ff7
 
 LABEL org.opencontainers.image.source="https://github.com/operinko-labs/lab-images" \
       org.opencontainers.image.description="nginx with ngx_brotli dynamic modules"
